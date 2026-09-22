@@ -28,10 +28,11 @@
     h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: 0.01em; }
     .sub { color: var(--muted); margin-top: 4px; }
     .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    select, button {
+    select, button, a.dl {
       background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
       border-radius: 4px; padding: 7px 10px; font-size: 13px;
     }
+    a.dl { text-decoration: none; display: inline-block; }
     button { cursor: pointer; }
     button.active { background: #243140; border-color: #3d5266; }
     .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; padding: 12px 20px; }
@@ -79,6 +80,7 @@
       <button data-day="Wednesday">Wednesday</button>
       <button data-day="Thursday">Thursday</button>
       <select id="runSelect"></select>
+      <a class="dl" href="T7-SW10th-Dongle-vs-App.html" download="T7-SW10th-Dongle-vs-App.html">Download HTML</a>
     </div>
   </header>
 
