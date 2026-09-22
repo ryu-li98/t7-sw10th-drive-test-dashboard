@@ -153,12 +153,14 @@
               <th>Run</th>
               <th class="num">Dongle pts</th>
               <th class="num">App pts</th>
-              <th class="num">Dongle km</th>
-              <th class="num">App km</th>
-              <th class="num">Δ km</th>
-              <th class="num">Dongle moving km/h</th>
-              <th class="num">App moving km/h</th>
-              <th class="num">Δ km/h</th>
+              <th class="num">Dongle travel min</th>
+              <th class="num">App travel min</th>
+              <th class="num">Dongle mi</th>
+              <th class="num">App mi</th>
+              <th class="num">Δ mi</th>
+              <th class="num">Dongle moving mph</th>
+              <th class="num">App moving mph</th>
+              <th class="num">Δ mph</th>
               <th class="num">Median offset m</th>
               <th class="num">P95 offset m</th>
               <th class="num">Dongle HDOP</th>
@@ -168,7 +170,7 @@
           <tbody></tbody>
         </table>
       </div>
-      <div class="note">Moving speed uses points ≥ 5 km/h. Offset is nearest-in-time, not map-matched to the corridor.</div>
+      <div class="note">Distances are miles (from km). Moving speed uses points ≥ 5 km/h, shown in mph. Offset is nearest-in-time, not map-matched to the corridor.</div>
     </div>
   </div>
 
@@ -227,6 +229,7 @@
     }
 
     function mean(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0; }
+    const KM_TO_MI = 0.621371;
 
     function renderKpis(list, run) {
       const ov = DATA.overview;
@@ -358,17 +361,19 @@
     function renderTable(list) {
       const tb = document.querySelector("#runTable tbody");
       tb.innerHTML = list.map(p => {
-        const dkm = p.app.distance_km - p.dongle.distance_km;
-        const dsp = p.app.moving_mean_kmh - p.dongle.moving_mean_kmh;
+        const dMi = (p.app.distance_km - p.dongle.distance_km) * KM_TO_MI;
+        const dsp = (p.app.moving_mean_kmh - p.dongle.moving_mean_kmh) * KM_TO_MI;
         return `<tr data-id="${p.id}">
           <td>${p.label}</td>
           <td class="num">${p.dongle.points}</td>
           <td class="num">${p.app.points}</td>
-          <td class="num">${p.dongle.distance_km.toFixed(2)}</td>
-          <td class="num">${p.app.distance_km.toFixed(2)}</td>
-          <td class="num">${dkm.toFixed(2)}</td>
-          <td class="num">${p.dongle.moving_mean_kmh.toFixed(1)}</td>
-          <td class="num">${p.app.moving_mean_kmh.toFixed(1)}</td>
+          <td class="num">${p.dongle.duration_min.toFixed(1)}</td>
+          <td class="num">${p.app.duration_min.toFixed(1)}</td>
+          <td class="num">${(p.dongle.distance_km * KM_TO_MI).toFixed(2)}</td>
+          <td class="num">${(p.app.distance_km * KM_TO_MI).toFixed(2)}</td>
+          <td class="num">${dMi.toFixed(2)}</td>
+          <td class="num">${(p.dongle.moving_mean_kmh * KM_TO_MI).toFixed(1)}</td>
+          <td class="num">${(p.app.moving_mean_kmh * KM_TO_MI).toFixed(1)}</td>
           <td class="num">${dsp.toFixed(1)}</td>
           <td class="num">${p.offset.median_offset_m}</td>
           <td class="num">${p.offset.p95_offset_m}</td>
