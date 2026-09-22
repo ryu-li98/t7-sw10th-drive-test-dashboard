@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T7 SW 10th St — Dongle vs Efficient App</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #171e26;
+      --panel-2: #1d2630;
+      --line: #2a3542;
+      --text: #e8eef4;
+      --muted: #8b9aab;
+      --dongle: #3d9cf0;
+      --app: #e08a3c;
+      --ok: #5cb87a;
+      --warn: #d4a017;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.45 "Segoe UI", system-ui, sans-serif; }
+    header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: 0.01em; }
+    .sub { color: var(--muted); margin-top: 4px; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, button {
+      background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+      border-radius: 4px; padding: 7px 10px; font-size: 13px;
+    }
+    button { cursor: pointer; }
+    button.active { background: #243140; border-color: #3d5266; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; padding: 12px 20px; }
+    .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+    .kpi .l { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .kpi .v { font-size: 20px; font-weight: 600; margin-top: 2px; }
+    .kpi .n { color: var(--muted); font-size: 11px; }
+    .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 20px; }
+    .map-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+    .map-title {
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .map { height: 420px; background: #f3f3f3; }
+    .leaflet-tile-pane { filter: grayscale(1) contrast(0.92) brightness(1.12); }
+    .legend { color: var(--muted); font-size: 11px; }
+    .section { padding: 16px 20px; }
+    h2 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
+    canvas { width: 100% !important; height: 120px !important; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 6px 8px; }
+    td { border-bottom: 1px solid var(--line); padding: 6px 8px; }
+    tr:hover td { background: var(--panel-2); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .speed-scale { display: flex; gap: 0; height: 8px; width: 140px; border-radius: 2px; overflow: hidden; }
+    .speed-scale span { flex: 1; }
+    @media (max-width: 980px) {
+      .maps, .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>T7 SW 10th St — Dongle vs Efficient App</h1>
+      <div class="sub">36001 D4 SWZ · paired simultaneous runs · 16–17 Sep 2026 · times in Eastern</div>
+    </div>
+    <div class="controls">
+      <button class="active" data-day="All">All days</button>
+      <button data-day="Wednesday">Wednesday</button>
+      <button data-day="Thursday">Thursday</button>
+      <select id="runSelect"></select>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="maps">
+    <div class="map-wrap">
+      <div class="map-title">
+        <span><span class="dot" style="background:var(--dongle)"></span>GPS dongle</span>
+        <span class="legend">color = speed (km/h)</span>
+      </div>
+      <div id="mapDongle" class="map"></div>
+    </div>
+    <div class="map-wrap">
+      <div class="map-title">
+        <span><span class="dot" style="background:var(--app)"></span>Efficient App</span>
+        <span class="legend">
+          <span class="speed-scale">
+            <span style="background:#2b6cb0"></span>
+            <span style="background:#38a169"></span>
+            <span style="background:#d69e2e"></span>
+            <span style="background:#c53030"></span>
+          </span>
+          0 · 30 · 50 · 70+
+        </span>
+      </div>
+      <div id="mapApp" class="map"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="map-wrap">
+      <div class="map-title">
+        <span>Overlay — both traces on the SW 10th St corridor</span>
+        <span class="legend">blue = dongle · orange = app · gray = posted route polygons</span>
+      </div>
+      <div id="mapOverlay" class="map" style="height:360px"></div>
+    </div>
+  </div>
+
+  <div class="section grid-2">
+    <div class="card">
+      <h2>Speed vs elapsed time (selected run)</h2>
+      <canvas id="speedChart" height="107"></canvas>
+      <div class="note">Dongle samples ~every 5 s; app ~every 1 s. Speeds are as recorded (km/h).</div>
+    </div>
+    <div class="card">
+      <h2>Travel time by run (min)</h2>
+      <canvas id="offsetChart" height="107"></canvas>
+      <div class="note">Elapsed time from first to last fix. Primary comparison for the two GPS sources on the same pass.</div>
+    </div>
+  </div>
+
+  <div class="section grid-2">
+    <div class="card">
+      <h2>Path distance by run (km)</h2>
+      <canvas id="distChart" height="120"></canvas>
+    </div>
+    <div class="card">
+      <h2>Time stopped by run (% of points &lt; 5 km/h)</h2>
+      <canvas id="offBarChart" height="120"></canvas>
+      <div class="note">Share of samples below 5 km/h. Shows whether delay / queue time is captured the same way.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="card">
+      <h2>Paired-run comparison</h2>
+      <div style="overflow:auto; max-height:420px">
+        <table id="runTable">
+          <thead>
+            <tr>
+              <th>Run</th>
+              <th class="num">Dongle pts</th>
+              <th class="num">App pts</th>
+              <th class="num">Dongle km</th>
+              <th class="num">App km</th>
+              <th class="num">Δ km</th>
+              <th class="num">Dongle moving km/h</th>
+              <th class="num">App moving km/h</th>
+              <th class="num">Δ km/h</th>
+              <th class="num">Median offset m</th>
+              <th class="num">P95 offset m</th>
+              <th class="num">Dongle HDOP</th>
+              <th class="num">App horiz. acc. m</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="note">Moving speed uses points ≥ 5 km/h. Offset is nearest-in-time, not map-matched to the corridor.</div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="dashboard_data.js"></script>
+  <script>
+    const DATA = window.DASHBOARD_DATA;
+    const pairs = DATA.pairs;
+    let dayFilter = "All";
+    let selectedId = pairs[0].id;
+    let speedChart, offsetChart, distChart, offBarChart;
+
+    const tiles = () => L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles &copy; Esri",
+      maxZoom: 16
+    });
+
+    function speedColor(spd) {
+      if (spd == null) return "#667";
+      if (spd < 5) return "#4a5568";
+      if (spd < 30) return "#2b6cb0";
+      if (spd < 50) return "#38a169";
+      if (spd < 70) return "#d69e2e";
+      return "#c53030";
+    }
+
+    const mapD = L.map("mapDongle", { zoomControl: true });
+    const mapA = L.map("mapApp");
+    const mapO = L.map("mapOverlay");
+    tiles().addTo(mapD); tiles().addTo(mapA); tiles().addTo(mapO);
+    const layerD = L.layerGroup().addTo(mapD);
+    const layerA = L.layerGroup().addTo(mapA);
+    const layerO = L.layerGroup().addTo(mapO);
+    mapD.on("moveend", () => { if (!mapA._syncing) { mapA._syncing = true; mapA.setView(mapD.getCenter(), mapD.getZoom()); mapA._syncing = false; }});
+    mapA.on("moveend", () => { if (!mapD._syncing) { mapD._syncing = true; mapD.setView(mapA.getCenter(), mapA.getZoom()); mapD._syncing = false; }});
+
+    function visiblePairs() {
+      return pairs.filter(p => dayFilter === "All" || p.day === dayFilter);
+    }
+
+    function drawTrack(layer, track, weight) {
+      for (let i = 1; i < track.length; i++) {
+        const a = track[i - 1], b = track[i];
+        L.polyline([[a.lat, a.lon], [b.lat, b.lon]], {
+          color: speedColor(b.spd), weight, opacity: 0.9, lineCap: "round"
+        }).addTo(layer);
+      }
+      if (track.length) {
+        L.circleMarker([track[0].lat, track[0].lon], { radius: 5, color: "#9ae6b4", fillColor: "#9ae6b4", fillOpacity: 1, weight: 1 })
+          .bindTooltip("Start").addTo(layer);
+        const last = track[track.length - 1];
+        L.circleMarker([last.lat, last.lon], { radius: 5, color: "#feb2b2", fillColor: "#feb2b2", fillOpacity: 1, weight: 1 })
+          .bindTooltip("End").addTo(layer);
+      }
+    }
+
+    function mean(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0; }
+
+    function renderKpis(list, run) {
+      const ov = DATA.overview;
+      const dPts = list.reduce((s, p) => s + p.dongle.points, 0);
+      const aPts = list.reduce((s, p) => s + p.app.points, 0);
+      const medOff = mean(list.map(p => p.offset.median_offset_m));
+      const items = run ? [
+        ["Selected", run.label, run.day],
+        ["Dongle points", run.dongle.points.toLocaleString(), run.dongle.median_interval_s + " s sample"],
+        ["App points", run.app.points.toLocaleString(), run.app.median_interval_s + " s sample"],
+        ["Dongle distance", run.dongle.distance_km.toFixed(2) + " km", run.dongle.duration_min + " min"],
+        ["App distance", run.app.distance_km.toFixed(2) + " km", run.app.duration_min + " min"],
+        ["Median offset", run.offset.median_offset_m + " m", "P95 " + run.offset.p95_offset_m + " m"],
+        ["Moving speed Δ", (run.app.moving_mean_kmh - run.dongle.moving_mean_kmh).toFixed(2) + " km/h", "app − dongle"],
+        ["App horiz. acc.", run.app.mean_hacc_m + " m", "Dongle HDOP " + run.dongle.mean_hdop]
+      ] : [
+        ["Paired runs", list.length, ov.dongle_runs_detected + " detected each"],
+        ["Dongle points", dPts.toLocaleString(), "~" + ov.mean_dongle_interval_s + " s"],
+        ["App points", aPts.toLocaleString(), "~" + ov.mean_app_interval_s + " s"],
+        ["Mean dongle km", ov.mean_dongle_distance_km, "per run"],
+        ["Mean app km", ov.mean_app_distance_km, "per run"],
+        ["Mean median offset", medOff.toFixed(1) + " m", "nearest-in-time"],
+        ["Moving speed", ov.mean_dongle_speed + " / " + ov.mean_app_speed, "dongle / app km/h"],
+        ["Quality", "HDOP " + ov.mean_dongle_hdop, "App ±" + ov.mean_app_hacc + " m"]
+      ];
+      document.getElementById("kpis").innerHTML = items.map(([l, v, n]) =>
+        `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="n">${n || ""}</div></div>`
+      ).join("");
+    }
+
+    function fillSelect(list) {
+      const sel = document.getElementById("runSelect");
+      sel.innerHTML = `<option value="all">All visible runs</option>` +
+        list.map(p => `<option value="${p.id}">${p.label}</option>`).join("");
+      const ids = new Set(list.map(p => String(p.id)));
+      if (selectedId !== "all" && !ids.has(String(selectedId))) selectedId = "all";
+      sel.value = selectedId === "all" ? "all" : String(selectedId);
+    }
+
+    function fitMaps(bounds) {
+      if (!bounds.isValid()) return;
+      mapD.fitBounds(bounds, { padding: [16, 16] });
+      mapA.fitBounds(bounds, { padding: [16, 16] });
+      mapO.fitBounds(bounds, { padding: [16, 16] });
+    }
+
+    function chartDefaults() {
+      Chart.defaults.color = "#8b9aab";
+      Chart.defaults.borderColor = "#2a3542";
+      Chart.defaults.font.family = "Segoe UI, system-ui, sans-serif";
+    }
+
+    function lineXY(canvas, series, yTitle) {
+      return new Chart(canvas, {
+        type: "line",
+        data: { datasets: series },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          parsing: false,
+          interaction: { mode: "nearest", intersect: false },
+          plugins: { legend: { labels: { boxWidth: 10 } } },
+          scales: {
+            x: { type: "linear", title: { display: true, text: "Elapsed time (s)" } },
+            y: { title: { display: true, text: yTitle }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function barChart(canvas, labels, series, yTitle) {
+      return new Chart(canvas, {
+        type: "bar",
+        data: { labels, datasets: series },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { boxWidth: 10 } } },
+          scales: {
+            x: { ticks: { maxRotation: 70, minRotation: 50, font: { size: 9 } } },
+            y: { title: { display: true, text: yTitle }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function updateCharts(list, run) {
+      if (speedChart) speedChart.destroy();
+      if (offsetChart) offsetChart.destroy();
+      if (distChart) distChart.destroy();
+      if (offBarChart) offBarChart.destroy();
+
+      const labels = list.map(p => "R" + String(p.id).padStart(2, "0"));
+      if (run) {
+        speedChart = lineXY(document.getElementById("speedChart"), [
+          { label: "Dongle km/h", data: run.dongle_speed.map(d => ({ x: d.t, y: d.spd })), borderColor: "#3d9cf0", pointRadius: 0, tension: 0.15, borderWidth: 2 },
+          { label: "App km/h", data: run.app_speed.map(d => ({ x: d.t, y: d.spd })), borderColor: "#e08a3c", pointRadius: 0, tension: 0.15, borderWidth: 2 }
+        ], "Speed (km/h)");
+      } else {
+        speedChart = barChart(document.getElementById("speedChart"), labels, [
+          { label: "Dongle moving km/h", data: list.map(p => p.dongle.moving_mean_kmh), backgroundColor: "#3d9cf0" },
+          { label: "App moving km/h", data: list.map(p => p.app.moving_mean_kmh), backgroundColor: "#e08a3c" }
+        ], "Moving speed (km/h)");
+      }
+
+      offsetChart = barChart(document.getElementById("offsetChart"), labels, [
+        { label: "Dongle min", data: list.map(p => p.dongle.duration_min), backgroundColor: "#3d9cf0" },
+        { label: "App min", data: list.map(p => p.app.duration_min), backgroundColor: "#e08a3c" }
+      ], "Travel time (min)");
+
+      distChart = barChart(document.getElementById("distChart"),
+        list.map(p => "R" + String(p.id).padStart(2, "0")),
+        [
+          { label: "Dongle km", data: list.map(p => p.dongle.distance_km), backgroundColor: "#3d9cf0" },
+          { label: "App km", data: list.map(p => p.app.distance_km), backgroundColor: "#e08a3c" }
+        ],
+        "Distance (km)"
+      );
+      offBarChart = barChart(document.getElementById("offBarChart"),
+        list.map(p => "R" + String(p.id).padStart(2, "0")),
+        [
+          { label: "Dongle stopped %", data: list.map(p => p.dongle.stopped_pct), backgroundColor: "#3d9cf0" },
+          { label: "App stopped %", data: list.map(p => p.app.stopped_pct), backgroundColor: "#e08a3c" }
+        ],
+        "Stopped share (%)"
+      );
+    }
+
+    function renderTable(list) {
+      const tb = document.querySelector("#runTable tbody");
+      tb.innerHTML = list.map(p => {
+        const dkm = p.app.distance_km - p.dongle.distance_km;
+        const dsp = p.app.moving_mean_kmh - p.dongle.moving_mean_kmh;
+        return `<tr data-id="${p.id}">
+          <td>${p.label}</td>
+          <td class="num">${p.dongle.points}</td>
+          <td class="num">${p.app.points}</td>
+          <td class="num">${p.dongle.distance_km.toFixed(2)}</td>
+          <td class="num">${p.app.distance_km.toFixed(2)}</td>
+          <td class="num">${dkm.toFixed(2)}</td>
+          <td class="num">${p.dongle.moving_mean_kmh.toFixed(1)}</td>
+          <td class="num">${p.app.moving_mean_kmh.toFixed(1)}</td>
+          <td class="num">${dsp.toFixed(1)}</td>
+          <td class="num">${p.offset.median_offset_m}</td>
+          <td class="num">${p.offset.p95_offset_m}</td>
+          <td class="num">${p.dongle.mean_hdop}</td>
+          <td class="num">${p.app.mean_hacc_m}</td>
+        </tr>`;
+      }).join("");
+      tb.querySelectorAll("tr").forEach(tr => tr.addEventListener("click", () => {
+        selectedId = Number(tr.dataset.id);
+        document.getElementById("runSelect").value = String(selectedId);
+        refresh();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }));
+    }
+
+    function refresh() {
+      const list = visiblePairs();
+      fillSelect(list);
+      const run = selectedId === "all" ? null : list.find(p => p.id === Number(selectedId)) || pairs.find(p => p.id === Number(selectedId));
+      renderKpis(list, run);
+      layerD.clearLayers(); layerA.clearLayers(); layerO.clearLayers();
+      if (DATA.route) {
+        L.geoJSON(DATA.route, { style: { color: "#6b7785", weight: 1, fillOpacity: 0.08, opacity: 0.7 } }).addTo(layerO);
+      }
+      const tracks = run ? [run] : list;
+      const b = L.latLngBounds([]);
+      tracks.forEach(p => {
+        drawTrack(layerD, p.dongle_track, run ? 5 : 3);
+        drawTrack(layerA, p.app_track, run ? 5 : 3);
+        const dLatLngs = p.dongle_track.map(x => [x.lat, x.lon]);
+        const aLatLngs = p.app_track.map(x => [x.lat, x.lon]);
+        L.polyline(dLatLngs, { color: "#3d9cf0", weight: run ? 4 : 2, opacity: 0.85 }).addTo(layerO);
+        L.polyline(aLatLngs, { color: "#e08a3c", weight: run ? 4 : 2, opacity: 0.7 }).addTo(layerO);
+        dLatLngs.concat(aLatLngs).forEach(ll => b.extend(ll));
+      });
+      fitMaps(b);
+      updateCharts(list, run);
+      renderTable(list);
+    }
+
+    document.getElementById("runSelect").addEventListener("change", (e) => {
+      selectedId = e.target.value === "all" ? "all" : Number(e.target.value);
+      refresh();
+    });
+    document.querySelectorAll("button[data-day]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("button[data-day]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        dayFilter = btn.dataset.day;
+        selectedId = "all";
+        refresh();
+      });
+    });
+
+    chartDefaults();
+    selectedId = "all";
+    refresh();
+    setTimeout(() => { mapD.invalidateSize(); mapA.invalidateSize(); mapO.invalidateSize(); }, 250);
+  </script>
+</body>
+</html>
