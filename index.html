@@ -53,7 +53,8 @@
     h2 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
-    canvas { width: 100% !important; height: 120px !important; }
+    .chart-box { position: relative; height: 156px; }
+    .chart-box canvas { display: block; width: 100% !important; height: 100% !important; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 6px 8px; }
     td { border-bottom: 1px solid var(--line); padding: 6px 8px; }
@@ -121,12 +122,12 @@
   <div class="section grid-2">
     <div class="card">
       <h2>Speed vs elapsed time (selected run)</h2>
-      <canvas id="speedChart" height="107"></canvas>
+      <div class="chart-box"><canvas id="speedChart"></canvas></div>
       <div class="note">Dongle samples ~every 5 s; app ~every 1 s. Speeds are as recorded (km/h).</div>
     </div>
     <div class="card">
       <h2>Travel time by run (min)</h2>
-      <canvas id="offsetChart" height="107"></canvas>
+      <div class="chart-box"><canvas id="offsetChart"></canvas></div>
       <div class="note">Elapsed time from first to last fix. Primary comparison for the two GPS sources on the same pass.</div>
     </div>
   </div>
@@ -134,11 +135,11 @@
   <div class="section grid-2">
     <div class="card">
       <h2>Path distance by run (km)</h2>
-      <canvas id="distChart" height="120"></canvas>
+      <div class="chart-box"><canvas id="distChart"></canvas></div>
     </div>
     <div class="card">
       <h2>Time stopped by run (% of points &lt; 5 km/h)</h2>
-      <canvas id="offBarChart" height="120"></canvas>
+      <div class="chart-box"><canvas id="offBarChart"></canvas></div>
       <div class="note">Share of samples below 5 km/h. Shows whether delay / queue time is captured the same way.</div>
     </div>
   </div>
@@ -161,16 +162,14 @@
               <th class="num">Dongle moving mph</th>
               <th class="num">App moving mph</th>
               <th class="num">Δ mph</th>
-              <th class="num">Median offset m</th>
-              <th class="num">P95 offset m</th>
-              <th class="num">Dongle HDOP</th>
-              <th class="num">App horiz. acc. m</th>
+              <th class="num">Median offset ft</th>
+              <th class="num">P95 offset ft</th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
-      <div class="note">Distances are miles (from km). Moving speed uses points ≥ 5 km/h, shown in mph. Offset is nearest-in-time, not map-matched to the corridor.</div>
+      <div class="note">Distances are miles. Moving speed uses points ≥ 5 km/h, shown in mph. Offset is nearest-in-time in feet, not map-matched to the corridor.</div>
     </div>
   </div>
 
@@ -230,6 +229,13 @@
 
     function mean(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0; }
     const KM_TO_MI = 0.621371;
+    const M_TO_FT = 3.28084;
+    const tooltipOpts = {
+      enabled: true,
+      intersect: false,
+      animation: false,
+      displayColors: true
+    };
 
     function renderKpis(list, run) {
       const ov = DATA.overview;
@@ -240,20 +246,18 @@
         ["Selected", run.label, run.day],
         ["Dongle points", run.dongle.points.toLocaleString(), run.dongle.median_interval_s + " s sample"],
         ["App points", run.app.points.toLocaleString(), run.app.median_interval_s + " s sample"],
-        ["Dongle distance", run.dongle.distance_km.toFixed(2) + " km", run.dongle.duration_min + " min"],
-        ["App distance", run.app.distance_km.toFixed(2) + " km", run.app.duration_min + " min"],
-        ["Median offset", run.offset.median_offset_m + " m", "P95 " + run.offset.p95_offset_m + " m"],
-        ["Moving speed Δ", (run.app.moving_mean_kmh - run.dongle.moving_mean_kmh).toFixed(2) + " km/h", "app − dongle"],
-        ["App horiz. acc.", run.app.mean_hacc_m + " m", "Dongle HDOP " + run.dongle.mean_hdop]
+        ["Dongle distance", (run.dongle.distance_km * KM_TO_MI).toFixed(2) + " mi", run.dongle.duration_min + " min"],
+        ["App distance", (run.app.distance_km * KM_TO_MI).toFixed(2) + " mi", run.app.duration_min + " min"],
+        ["Median offset", (run.offset.median_offset_m * M_TO_FT).toFixed(1) + " ft", "P95 " + (run.offset.p95_offset_m * M_TO_FT).toFixed(1) + " ft"],
+        ["Moving speed Δ", ((run.app.moving_mean_kmh - run.dongle.moving_mean_kmh) * KM_TO_MI).toFixed(2) + " mph", "app − dongle"]
       ] : [
         ["Paired runs", list.length, ov.dongle_runs_detected + " detected each"],
         ["Dongle points", dPts.toLocaleString(), "~" + ov.mean_dongle_interval_s + " s"],
         ["App points", aPts.toLocaleString(), "~" + ov.mean_app_interval_s + " s"],
-        ["Mean dongle km", ov.mean_dongle_distance_km, "per run"],
-        ["Mean app km", ov.mean_app_distance_km, "per run"],
-        ["Mean median offset", medOff.toFixed(1) + " m", "nearest-in-time"],
-        ["Moving speed", ov.mean_dongle_speed + " / " + ov.mean_app_speed, "dongle / app km/h"],
-        ["Quality", "HDOP " + ov.mean_dongle_hdop, "App ±" + ov.mean_app_hacc + " m"]
+        ["Mean dongle mi", (ov.mean_dongle_distance_km * KM_TO_MI).toFixed(2), "per run"],
+        ["Mean app mi", (ov.mean_app_distance_km * KM_TO_MI).toFixed(2), "per run"],
+        ["Mean median offset", (medOff * M_TO_FT).toFixed(1) + " ft", "nearest-in-time"],
+        ["Moving speed", (ov.mean_dongle_speed * KM_TO_MI).toFixed(1) + " / " + (ov.mean_app_speed * KM_TO_MI).toFixed(1), "dongle / app mph"]
       ];
       document.getElementById("kpis").innerHTML = items.map(([l, v, n]) =>
         `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="n">${n || ""}</div></div>`
@@ -290,8 +294,12 @@
           responsive: true,
           maintainAspectRatio: false,
           parsing: false,
-          interaction: { mode: "nearest", intersect: false },
-          plugins: { legend: { labels: { boxWidth: 10 } } },
+          interaction: { mode: "nearest", axis: "x", intersect: false },
+          hover: { mode: "nearest", axis: "x", intersect: false },
+          plugins: {
+            legend: { labels: { boxWidth: 10 } },
+            tooltip: { ...tooltipOpts, mode: "nearest" }
+          },
           scales: {
             x: { type: "linear", title: { display: true, text: "Elapsed time (s)" } },
             y: { title: { display: true, text: yTitle }, beginAtZero: true }
@@ -307,7 +315,12 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { labels: { boxWidth: 10 } } },
+          interaction: { mode: "index", intersect: false },
+          hover: { mode: "index", intersect: false },
+          plugins: {
+            legend: { labels: { boxWidth: 10 } },
+            tooltip: { ...tooltipOpts, mode: "index" }
+          },
           scales: {
             x: { ticks: { maxRotation: 70, minRotation: 50, font: { size: 9 } } },
             y: { title: { display: true, text: yTitle }, beginAtZero: true }
@@ -356,6 +369,9 @@
         ],
         "Stopped share (%)"
       );
+      requestAnimationFrame(() => {
+        [speedChart, offsetChart, distChart, offBarChart].forEach(c => { if (c) c.resize(); });
+      });
     }
 
     function renderTable(list) {
@@ -375,10 +391,8 @@
           <td class="num">${(p.dongle.moving_mean_kmh * KM_TO_MI).toFixed(1)}</td>
           <td class="num">${(p.app.moving_mean_kmh * KM_TO_MI).toFixed(1)}</td>
           <td class="num">${dsp.toFixed(1)}</td>
-          <td class="num">${p.offset.median_offset_m}</td>
-          <td class="num">${p.offset.p95_offset_m}</td>
-          <td class="num">${p.dongle.mean_hdop}</td>
-          <td class="num">${p.app.mean_hacc_m}</td>
+          <td class="num">${(p.offset.median_offset_m * M_TO_FT).toFixed(1)}</td>
+          <td class="num">${(p.offset.p95_offset_m * M_TO_FT).toFixed(1)}</td>
         </tr>`;
       }).join("");
       tb.querySelectorAll("tr").forEach(tr => tr.addEventListener("click", () => {
