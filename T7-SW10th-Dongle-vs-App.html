@@ -101,9 +101,8 @@
             <span style="background:#c53030"></span>
             <span style="background:#d69e2e"></span>
             <span style="background:#38a169"></span>
-            <span style="background:#2b6cb0"></span>
           </span>
-          0–29 · 30–49 · 50–69 · 70+ mph
+          &lt;10 · 10–30 · 30+ mph
         </span>
       </div>
       <div id="mapDongle" class="map"></div>
@@ -116,9 +115,8 @@
             <span style="background:#c53030"></span>
             <span style="background:#d69e2e"></span>
             <span style="background:#38a169"></span>
-            <span style="background:#2b6cb0"></span>
           </span>
-          0–29 · 30–49 · 50–69 · 70+ mph
+          &lt;10 · 10–30 · 30+ mph
         </span>
       </div>
       <div id="mapApp" class="map"></div>
@@ -212,10 +210,9 @@ window.DASHBOARD_DATA = {"overview":{"project":"36001 D4 SWZ \u2014 T7 SW 10th S
     function speedColor(spdKmh) {
       if (spdKmh == null) return "#667";
       const mph = spdKmh * KM_TO_MI;
-      if (mph < 30) return "#c53030";
-      if (mph < 50) return "#d69e2e";
-      if (mph < 70) return "#38a169";
-      return "#2b6cb0";
+      if (mph < 10) return "#c53030";
+      if (mph < 30) return "#d69e2e";
+      return "#38a169";
     }
 
     const mapD = L.map("mapDongle", { zoomControl: true });
@@ -329,7 +326,7 @@ window.DASHBOARD_DATA = {"overview":{"project":"36001 D4 SWZ \u2014 T7 SW 10th S
             tooltip: { ...tooltipOpts, mode: "nearest" }
           },
           scales: {
-            x: { type: "linear", title: { display: true, text: "Elapsed time (s)" } },
+            x: { type: "linear", title: { display: true, text: "Elapsed time (min)" } },
             y: { title: { display: true, text: yTitle }, beginAtZero: true }
           }
         }
@@ -366,8 +363,8 @@ window.DASHBOARD_DATA = {"overview":{"project":"36001 D4 SWZ \u2014 T7 SW 10th S
       const labels = list.map(p => "R" + String(p.id).padStart(2, "0"));
       if (run) {
         speedChart = lineXY(document.getElementById("speedChart"), [
-          { label: "Dongle mph", data: run.dongle_speed.map(d => ({ x: d.t, y: d.spd == null ? null : d.spd * KM_TO_MI })), borderColor: "#3d9cf0", pointRadius: 0, tension: 0.15, borderWidth: 2 },
-          { label: "App mph", data: run.app_speed.map(d => ({ x: d.t, y: d.spd == null ? null : d.spd * KM_TO_MI })), borderColor: "#e08a3c", pointRadius: 0, tension: 0.15, borderWidth: 2 }
+          { label: "Dongle mph", data: run.dongle_speed.map(d => ({ x: d.t / 60, y: d.spd == null ? null : d.spd * KM_TO_MI })), borderColor: "#3d9cf0", pointRadius: 0, tension: 0.15, borderWidth: 2 },
+          { label: "App mph", data: run.app_speed.map(d => ({ x: d.t / 60, y: d.spd == null ? null : d.spd * KM_TO_MI })), borderColor: "#e08a3c", pointRadius: 0, tension: 0.15, borderWidth: 2 }
         ], "Speed (mph)");
       } else {
         speedChart = barChart(document.getElementById("speedChart"), labels, [
