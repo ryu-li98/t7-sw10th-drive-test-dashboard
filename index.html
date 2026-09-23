@@ -97,7 +97,15 @@
     <div class="map-wrap">
       <div class="map-title">
         <span><span class="dot" style="background:var(--dongle)"></span>GPS dongle</span>
-        <span class="legend">color = speed (km/h)</span>
+        <span class="legend">
+          <span class="speed-scale">
+            <span style="background:#c53030"></span>
+            <span style="background:#d69e2e"></span>
+            <span style="background:#38a169"></span>
+            <span style="background:#2b6cb0"></span>
+          </span>
+          0–29 · 30–49 · 50–69 · 70+ mph
+        </span>
       </div>
       <div id="mapDongle" class="map"></div>
     </div>
@@ -106,12 +114,12 @@
         <span><span class="dot" style="background:var(--app)"></span>Efficient App</span>
         <span class="legend">
           <span class="speed-scale">
-            <span style="background:#2b6cb0"></span>
-            <span style="background:#38a169"></span>
-            <span style="background:#d69e2e"></span>
             <span style="background:#c53030"></span>
+            <span style="background:#d69e2e"></span>
+            <span style="background:#38a169"></span>
+            <span style="background:#2b6cb0"></span>
           </span>
-          0 · 30 · 50 · 70+
+          0–29 · 30–49 · 50–69 · 70+ mph
         </span>
       </div>
       <div id="mapApp" class="map"></div>
@@ -197,13 +205,16 @@
       maxZoom: 16
     });
 
-    function speedColor(spd) {
-      if (spd == null) return "#667";
-      if (spd < 5) return "#4a5568";
-      if (spd < 30) return "#2b6cb0";
-      if (spd < 50) return "#38a169";
-      if (spd < 70) return "#d69e2e";
-      return "#c53030";
+    const KM_TO_MI = 0.621371;
+    const M_TO_FT = 3.28084;
+
+    function speedColor(spdKmh) {
+      if (spdKmh == null) return "#667";
+      const mph = spdKmh * KM_TO_MI;
+      if (mph < 30) return "#c53030";
+      if (mph < 50) return "#d69e2e";
+      if (mph < 70) return "#38a169";
+      return "#2b6cb0";
     }
 
     const mapD = L.map("mapDongle", { zoomControl: true });
@@ -246,8 +257,6 @@
       const s = abs % 60;
       return sign + m + ":" + String(s).padStart(2, "0");
     }
-    const KM_TO_MI = 0.621371;
-    const M_TO_FT = 3.28084;
     const tooltipOpts = {
       enabled: true,
       intersect: false,
