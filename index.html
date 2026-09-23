@@ -163,8 +163,8 @@
               <th>Run</th>
               <th class="num">Dongle pts</th>
               <th class="num">App pts</th>
-              <th class="num">Dongle travel min</th>
-              <th class="num">App travel min</th>
+              <th class="num">Dongle travel</th>
+              <th class="num">App travel</th>
               <th class="num">Dongle mi</th>
               <th class="num">App mi</th>
               <th class="num">Δ mi</th>
@@ -178,7 +178,7 @@
           <tbody></tbody>
         </table>
       </div>
-      <div class="note">Distances are miles. Moving speed uses points ≥ 5 km/h, shown in mph. Time stopped uses points &lt; 3 mph. Offset is nearest-in-time in feet, not map-matched to the corridor.</div>
+      <div class="note">Travel time is m:ss. Distances are miles. Moving speed uses points ≥ 5 km/h, shown in mph. Time stopped uses points &lt; 3 mph. Offset is nearest-in-time in feet, not map-matched to the corridor.</div>
     </div>
   </div>
 
@@ -237,6 +237,15 @@
     }
 
     function mean(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0; }
+    function formatMinAsTime(min) {
+      if (min == null || !isFinite(min)) return "";
+      const totalSec = Math.round(Number(min) * 60);
+      const sign = totalSec < 0 ? "-" : "";
+      const abs = Math.abs(totalSec);
+      const m = Math.floor(abs / 60);
+      const s = abs % 60;
+      return sign + m + ":" + String(s).padStart(2, "0");
+    }
     const KM_TO_MI = 0.621371;
     const M_TO_FT = 3.28084;
     const tooltipOpts = {
@@ -392,8 +401,8 @@
           <td>${p.label}</td>
           <td class="num">${p.dongle.points}</td>
           <td class="num">${p.app.points}</td>
-          <td class="num">${p.dongle.duration_min.toFixed(1)}</td>
-          <td class="num">${p.app.duration_min.toFixed(1)}</td>
+          <td class="num">${formatMinAsTime(p.dongle.duration_min)}</td>
+          <td class="num">${formatMinAsTime(p.app.duration_min)}</td>
           <td class="num">${(p.dongle.distance_km * KM_TO_MI).toFixed(2)}</td>
           <td class="num">${(p.app.distance_km * KM_TO_MI).toFixed(2)}</td>
           <td class="num">${dMi.toFixed(2)}</td>
